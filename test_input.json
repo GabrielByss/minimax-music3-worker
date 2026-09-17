@@ -1,0 +1,12 @@
+{
+  "input": {
+    "prompt": "Genre: upbeat pop. BPM: 120. Key: C major. Bright, catchy ringtone hook that starts immediately, radio-ready production, clean mix.\nVocals: warm female lead, clear intelligible lyrics, light stacked harmonies in the chorus, sung in English.\nArrangement: punchy drums, bright synths, plucky bass; the hook lands in the first seconds and the track ends cleanly.",
+    "lyrics": "[verse]\nHey Anna, pick up the phone\nSomebody's calling, you're not alone\n[chorus]\nRing ring, it's for you\nRing ring, it's for you",
+    "duration": 30,
+    "vocal_language": "en",
+    "inference_steps": 30,
+    "audio_format": "mp3",
+    "fade_out": 1.0,
+    "return_base64": true
+  }
+}

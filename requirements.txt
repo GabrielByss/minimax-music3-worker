@@ -1,0 +1,10 @@
+# Instalowane na obrazie pytorch/pytorch (torch + CUDA już są). diffusers instalowany osobno (Dockerfile, DIFFUSERS_SPEC).
+# diffusers 0.40 wymaga huggingface_hub 1.x (pobieranie przez hf_xet, hf_transfer już nieobsługiwany).
+runpod>=1.7.9,<2
+transformers>=5.0,<6
+accelerate>=1.0
+soundfile>=0.12
+numpy
+huggingface_hub>=1.23,<2
+hf_xet
+sentencepiece

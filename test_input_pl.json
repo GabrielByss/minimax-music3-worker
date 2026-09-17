@@ -1,0 +1,12 @@
+{
+  "input": {
+    "prompt": "Genre: energetic pop-rock. BPM: 128. Key: A minor. Bright, catchy, radio-ready production; the hook lands in the first seconds and the track ends cleanly.\nVocals: powerful male lead, clear diction, sung in Polish, stacked harmonies in the chorus.\nArrangement: driving drums, electric guitars, synth pads, punchy bass; short instrumental break before the last chorus.",
+    "lyrics": "[verse]\nDzwoni telefon, odbierz już\nKtoś na ciebie czeka, nie zwlekaj tu\nŚwiat się kręci, a ty stoisz w miejscu\nOdbierz, zanim zgaśnie ten sygnał\n[chorus]\nOdbierz, odbierz, to jest twój czas\nKtoś chce usłyszeć twój głos\nOdbierz, odbierz, nie czekaj ni chwili\nTo dla ciebie gra ten dzwonek\n[outro]",
+    "duration": 60,
+    "vocal_language": "pl",
+    "inference_steps": 30,
+    "audio_format": "mp3",
+    "fade_out": 1.0,
+    "return_base64": true
+  }
+}

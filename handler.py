@@ -123,18 +123,55 @@ OFFLOAD = OFFLOAD_MODE in {"1", "true", "yes", "on"} or (OFFLOAD_MODE == "auto" 
 log(f"boot: model={MODEL_ID} gpu={GPU_NAME} vram={VRAM_GB:.1f}GB offload={OFFLOAD} "
     f"offline={os.environ.get('HF_HUB_OFFLINE', '0')} hf_home={os.environ.get('HF_HOME', '')}")
 
+# Wagi w obrazie: ładuj ze ścieżki lokalnej snapshotu HF i z local_files_only=True.
+# Powód (diffusers 0.40): przy shardowanym checkpoincie z Hub (transformer/ ma 2 shardy) `_get_checkpoint_shard_files`
+# woła `model_info()` po sieci, o ile nie dostanie `local_files_only=True`; pod HF_HUB_OFFLINE=1 kończy się to wyjątkiem,
+# który `load_components` tylko loguje jako ostrzeżenie – pipeline startował z `transformer=None` i każde zlecenie padało
+# po etapie AR z "'NoneType' object has no attribute 'dtype'" (incydent 2026-09-17, v1).
+BAKED = env_bool("MM3_BAKED", True)
+PIPE_SOURCE = MODEL_ID
+LOAD_KWARGS: dict = {"dtype": torch.bfloat16}
+if BAKED:
+    LOAD_KWARGS["local_files_only"] = True
+    try:
+        from huggingface_hub import snapshot_download  # noqa: E402
+
+        PIPE_SOURCE = snapshot_download(MODEL_ID, local_files_only=True)
+        LOAD_KWARGS["pretrained_model_name_or_path"] = PIPE_SOURCE
+        log(f"weights: {PIPE_SOURCE}")
+    except Exception as exc:  # pragma: no cover
+        log(f"snapshot lookup failed ({exc}); loading by repo id with local_files_only=True")
+
 if OFFLOAD:
     # < ~30 GB VRAM (np. karty 24 GB): auto-offload komponentów na CPU (~22 GB VRAM, wolniej).
     from diffusers import ComponentsManager  # noqa: E402
 
     MANAGER = ComponentsManager()
     MANAGER.enable_auto_cpu_offload(device="cuda")
-    PIPE = ModularPipeline.from_pretrained(MODEL_ID, components_manager=MANAGER)
-    PIPE.load_components(dtype=torch.bfloat16)
+    PIPE = ModularPipeline.from_pretrained(PIPE_SOURCE, components_manager=MANAGER)
+    PIPE.load_components(**LOAD_KWARGS)
 else:
-    PIPE = ModularPipeline.from_pretrained(MODEL_ID)
-    PIPE.load_components(dtype=torch.bfloat16)
+    PIPE = ModularPipeline.from_pretrained(PIPE_SOURCE)
+    PIPE.load_components(**LOAD_KWARGS)
     PIPE.to("cuda")
+
+# Twarda weryfikacja: brakujący komponent ma zatrzymać workera przy starcie, a nie po kilkudziesięciu sekundach GPU na zlecenie.
+_specs = getattr(PIPE, "_component_specs", {}) or {}
+_missing = [
+    name for name, spec in _specs.items()
+    if getattr(spec, "default_creation_method", "") == "from_pretrained" and getattr(PIPE, name, None) is None
+]
+if _missing:
+    raise RuntimeError(f"MiniMax Music 3: nie załadowano komponentów {_missing} (źródło: {PIPE_SOURCE}, kwargs: {LOAD_KWARGS})")
+_loaded = []
+for name in _specs:
+    comp = getattr(PIPE, name, None)
+    if comp is None:
+        continue
+    dtype = getattr(comp, "dtype", None)
+    device = getattr(comp, "device", None)
+    _loaded.append(f"{name}={type(comp).__name__}" + (f"[{dtype}@{device}]" if dtype is not None else ""))
+log("components: " + ", ".join(_loaded))
 
 SAMPLE_RATE = int(PIPE.sampling_rate)
 _current_guidance = 1.7  # wartość z konfiguracji pipeline'u (guider ClassifierFreeGuidance 1.7)

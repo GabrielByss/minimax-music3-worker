@@ -133,13 +133,21 @@ PIPE_SOURCE = MODEL_ID
 LOAD_KWARGS: dict = {"dtype": torch.bfloat16}
 if BAKED:
     LOAD_KWARGS["local_files_only"] = True
+    # Katalog snapshotu w cache HF: przez ścieżkę zcache'owanego pliku indeksu (snapshot_download(local_files_only=True)
+    # w huggingface_hub 1.x odrzuca snapshot jako "niekompletny", bo celowo nie mamy qwen_7B/ i *.pth).
     try:
-        from huggingface_hub import snapshot_download  # noqa: E402
+        from huggingface_hub import hf_hub_download  # noqa: E402
 
-        PIPE_SOURCE = snapshot_download(MODEL_ID, local_files_only=True)
-        LOAD_KWARGS["pretrained_model_name_or_path"] = PIPE_SOURCE
-        log(f"weights: {PIPE_SOURCE}")
+        _index_path = hf_hub_download(MODEL_ID, "modular_model_index.json", local_files_only=True)
+        PIPE_SOURCE = os.path.dirname(_index_path)  # .../snapshots/<commit>; pliki w środku to symlinki do blobs/
+        if os.path.isdir(os.path.join(PIPE_SOURCE, "transformer")):
+            LOAD_KWARGS["pretrained_model_name_or_path"] = PIPE_SOURCE
+            log(f"weights: {PIPE_SOURCE}")
+        else:  # pragma: no cover
+            PIPE_SOURCE = MODEL_ID
+            log(f"snapshot dir without transformer/ ({os.path.dirname(_index_path)}); loading by repo id with local_files_only=True")
     except Exception as exc:  # pragma: no cover
+        PIPE_SOURCE = MODEL_ID
         log(f"snapshot lookup failed ({exc}); loading by repo id with local_files_only=True")
 
 if OFFLOAD:
